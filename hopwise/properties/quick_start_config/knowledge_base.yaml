@@ -1,0 +1,48 @@
+# Base configuration for knowledge-based models
+# This file contains common settings for knowledge-aware recommendation models
+
+# Data loading configuration
+load_col:
+  inter: ["user_id", "item_id", "rating", "timestamp"]
+  kg: ["head_id", "relation_id", "tail_id"]
+  link: ["item_id", "entity_id"]
+
+# Training configuration
+train_neg_sample_args:
+  distribution: uniform
+  sample_num: 1
+  alpha: 1.0
+  dynamic: False
+  candidate_num: 0
+
+# Evaluation configuration
+eval_args:
+  split: { "RS": [0.8, 0.1, 0.1] }
+  group_by: user
+  order: RO
+  mode: full
+
+# Knowledge graph preprocessing
+ui_relation: "[UI-Relation]"
+kg_reverse_r: False
+entity_kg_num_interval: "[0,inf)"
+relation_kg_num_interval: "[0,inf)"
+
+# Default model parameters
+embedding_size: 64
+reg_weight: 1e-05
+
+# Training parameters
+epochs: 300
+learning_rate: 0.001
+train_batch_size: 2048
+eval_batch_size: 128
+weight_decay: 0.0
+
+# Evaluation metrics
+metrics: ["Recall", "NDCG", "Hit", "Precision"]
+topk: [10, 20]
+
+# Reproducibility
+seed: 2020
+reproducibility: True

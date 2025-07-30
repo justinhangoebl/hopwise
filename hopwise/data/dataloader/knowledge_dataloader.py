@@ -187,7 +187,7 @@ class KnowledgePathEvalDataLoader(FullSortRecEvalDataLoader):
             dataset.path_token_separator.join(
                 [
                     dataset.tokenizer.bos_token,
-                    PathLanguageModelingTokenType.USER.token + str(uid.item()),
+                    PathLanguageModelingTokenType.USER.token + str(uid),
                     PathLanguageModelingTokenType.RELATION.token + str(ui_relation),
                 ]
             )
@@ -200,7 +200,9 @@ class KnowledgePathEvalDataLoader(FullSortRecEvalDataLoader):
 
     def _init_batch_size_and_step(self):
         batch_size = self.config["eval_batch_size"]
+        self._batch_size = batch_size
         self.step = batch_size
+        self.sample_size = len(self.user_df)
         self.set_batch_size(batch_size)
 
     def collate_fn(self, index):

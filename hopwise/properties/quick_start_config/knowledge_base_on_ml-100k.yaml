@@ -1,0 +1,31 @@
+# Configuration specific to ml-100k dataset for knowledge-based models
+# This file contains dataset-specific settings for KGGLM on ml-100k
+
+# Dataset specific settings
+dataset: ml-100k
+
+# Training settings optimized for ml-100k
+epochs: 300
+train_batch_size: 2048
+eval_batch_size: 128
+learning_rate: 0.001
+weight_decay: 0.0
+
+# Evaluation settings
+eval_args:
+    split: {'RS': [0.8, 0.1, 0.1]}
+    group_by: user
+    order: RO
+    mode: full
+
+# Metrics for evaluation
+metrics: ['Recall', 'NDCG', 'Hit', 'Precision']
+topk: [10, 20]
+
+# Model specific settings for ml-100k
+embedding_size: 64
+n_layers: 1
+reg_weight: 1e-05
+
+# Knowledge graph settings for ml-100k
+kg_embedding_size: 64

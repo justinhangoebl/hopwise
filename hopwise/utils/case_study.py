@@ -69,7 +69,16 @@ def full_sort_scores(uid_series, model, test_data, device=None):
     scores = scores.view(-1, dataset.item_num)
     scores[:, 0] = -np.inf  # set scores of [pad] to -inf
     if history_index is not None:
-        scores[history_index] = -np.inf  # set scores of history items to -inf
+        # Filter history_index to only include valid indices for the current scores tensor
+        valid_history_index = history_index[history_index < scores.numel()]
+        if len(valid_history_index) > 0:
+            # Convert flat indices to 2D indices for the reshaped scores tensor
+            row_indices = valid_history_index // dataset.item_num
+            col_indices = valid_history_index % dataset.item_num
+            # Only use indices that are within the actual scores tensor bounds
+            valid_mask = row_indices < scores.shape[0]
+            if valid_mask.any():
+                scores[row_indices[valid_mask], col_indices[valid_mask]] = -np.inf
 
     return scores
 

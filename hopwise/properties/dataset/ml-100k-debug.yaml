@@ -1,0 +1,62 @@
+# Debug configuration for ml-100k dataset with minimal users
+# This will make path sampling much faster for debugging
+
+# Basic dataset settings
+load_col:
+  inter: [user_id, item_id, rating, timestamp]
+  item: [item_id, movie_title, release_year, genre]
+  kg: [head_id, relation_id, tail_id]
+  link: [item_id, entity_id]
+
+val_args:
+  split: { "RS": [0.8, 0.1, 0.1] }
+  group_by: user
+
+# DEBUG: Limit to exactly 100 users for fast debugging
+min_user_inter_num: 5
+min_item_inter_num: 5
+max_user_inter_num: 50 # Limit interactions per user
+
+# Filter settings to keep only a small subset
+filter_inter_by_user_or_item: true
+
+# Additional filtering to limit total dataset size
+user_inter_num_interval: "[5,50]" # Users must have 5-50 interactions
+item_inter_num_interval: "[2,inf)" # Items must have at least 2 interactions
+
+# Knowledge Path Sampling-based Model Needed
+path_hop_length: 3 # (int) Number of hops in the knowledge path.
+MAX_PATHS_PER_USER: 5 # (int) Very small for debugging
+context_length: ~ # (int) Maximum length of the context. Set to (path_hop_length * 2) + 1 (U) + 2 (BOS/EOS) by default.
+metapaths: ~ # (list) Metapaths used to sample paths.
+
+path_sample_args:
+  temporal_causality: False # (bool) Whether to use temporal causality.
+  collaborative_path: True # (bool) Whether to include users in sampled paths.
+  strategy: simple-ui # (str) Strategy for sampling paths.
+  path_token_separator: " " # (str) Token separator for paths.
+  restrict_by_phase: False # (bool) Whether to restrict the last item in the reasoning path by the used ids in the dataloader phase.
+  MAX_CONSECUTIVE_INVALID: 5 # (int) Reduced for debugging
+  MAX_RW_TRIES_PER_IID: 1 # (int) Maximum number of tries per positive item.
+  MAX_RW_PATHS_PER_HOP: 1 # (int) Maximum number of paths sampled at each hop for constrained random walk.
+  parallel_max_workers: 1 # (int) Maximum number of workers for parallel processing.
+
+tokenizer: # (dict) Tokenizer parameters.
+  model: WordLevel # (str) Tokenizer model.
+  special_tokens: # (dict) Special tokens.
+    mask_token: "[MASK]" # (str) Mask token.
+    unk_token: "[UNK]" # (str) Unknown token.
+    pad_token: "[PAD]" # (str) Pad token.
+    bos_token: "[BOS]" # (str) Beginning of sequence token.
+    eos_token: "[EOS]" # (str) End of sequence token.
+
+# Additional debug settings
+eval_args:
+  split: { "RS": [0.8, 0.1, 0.1] }
+  group_by: user
+  order: RO
+  mode: full
+
+# Reduce batch sizes for debugging
+train_batch_size: 8
+eval_batch_size: 8
