@@ -301,7 +301,7 @@ class KnowledgePathDataset(KnowledgeBasedDataset):
         """Generate a unique cache key based on dataset and path sampling configuration."""
         # Include key parameters that affect path sampling
         cache_params = {
-            'dataset_name': self.config.get('dataset', 'unknown'),
+            'dataset_name': self.config['dataset'],
             'path_hop_length': self.path_hop_length,
             'max_paths_per_user': self.max_paths_per_user,
             'strategy': self.strategy,

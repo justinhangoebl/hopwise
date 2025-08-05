@@ -1,6 +1,10 @@
-
-
 <h1 align="center">🚀 hopwise</h1>
+
+<QUICKSTART> uv run -q hopwise train --model KGGLM --dataset ml-100k
+</QUICKSTART>
+
+MODEL_QUICK uv run -q hopwise train --config_files hopwise/properties/dataset/ml-100k-debug.yaml
+
 <p align="center">
   <b>RecBole extension with a focus on Knowledge Graphs (KGs) and explainability.</b>
 </p>
@@ -12,7 +16,6 @@
   <a href="https://github.com/tail-unica/hopwise/network"><img alt="GitHub forks" src="https://img.shields.io/github/forks/tail-unica/hopwise"></a>
 <a href="https://github.com/tail-unica/hopwise/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/tail-unica/hopwise"></a>
 </p>
-
 
 ---
 
@@ -30,6 +33,7 @@ By integrating **knowledge embedding models**, **path-based reasoning methods**,
 ## 🆕 What's New?
 
 🆕 **Path Reasoning Models**
+
 - **[PLM-Rec](https://dl.acm.org/doi/10.1145/3485447.3511937)**
 - **[PEARLM](https://arxiv.org/pdf/2310.16452)**
 - **[KGGLM](https://dl.acm.org/doi/10.1145/3640457.3691703)**
@@ -37,7 +41,7 @@ By integrating **knowledge embedding models**, **path-based reasoning methods**,
 - **[CAFE](https://dl.acm.org/doi/10.1145/3340531.3412038)**
 - **[TPRec](https://dl.acm.org/doi/10.1145/3531267)**
 
-*We also added [KGLRR](https://link.springer.com/article/10.1007/s10994-024-06646-4) although the final explanation is not based on a predicted path in a Knowledge Graph.*
+_We also added [KGLRR](https://link.springer.com/article/10.1007/s10994-024-06646-4) although the final explanation is not based on a predicted path in a Knowledge Graph._
 
 🆕 **Knowledge Graph Embedding Models**
 
@@ -52,7 +56,6 @@ By integrating **knowledge embedding models**, **path-based reasoning methods**,
 
 **📌 Tensor/Matrix Factorization Models**
 
-
 - **[ComplEx](https://arxiv.org/abs/1606.06357)**
 - **[Analogy](https://proceedings.mlr.press/v70/liu17d/liu17d.pdf)**
 - **[TuckER](https://arxiv.org/abs/1901.09590)**
@@ -65,7 +68,7 @@ By integrating **knowledge embedding models**, **path-based reasoning methods**,
 - **[ConvE](https://arxiv.org/abs/1707.01476)**
 - **[ConvKB](https://aclanthology.org/N18-2053/)**
 
-*We relied for most of the Knowledge Graph Embeddings methods to: [TorchKGE](https://torchkge.readthedocs.io/en/latest/) due to its popularity, published at a KDD workshop in 2020.*
+_We relied for most of the Knowledge Graph Embeddings methods to: [TorchKGE](https://torchkge.readthedocs.io/en/latest/) due to its popularity, published at a KDD workshop in 2020._
 
 🆕 **Explanation Path Quality Metrics**
 
@@ -81,6 +84,7 @@ By integrating **knowledge embedding models**, **path-based reasoning methods**,
 - **Model Fidelity**
 
 🆕 **New Datasets**
+
 - **MovieLens-1M Small**: used in the papers [PEARLM](https://arxiv.org/abs/2310.16452) and [KGGLM](https://dl.acm.org/doi/10.1145/3640457.3691703)
 - **Last.FM-1M Small**: used in the papers [PEARLM](https://arxiv.org/abs/2310.16452) and [KGGLM](https://dl.acm.org/doi/10.1145/3640457.3691703)
 - **Yelp 2018**: used in the paper [KGAT](https://dl.acm.org/doi/10.1145/3292500.3330989)
@@ -88,21 +92,20 @@ By integrating **knowledge embedding models**, **path-based reasoning methods**,
 
 All the datasets are available as zip archives on [Google Drive](https://drive.google.com/drive/folders/1Zv57Xfo3mC2DemQbHf5XkYKBluRALQNm?usp=drive_link).
 
-> [!IMPORTANT]
-> **Check the paper for the other changes.**
+> [!IMPORTANT] > **Check the paper for the other changes.**
 
 ## ⚡ Installation
 
 To install the project, you need to use `uv`. Follow the steps below to set up the environment and install the necessary dependencies.
 
 ## 🔹 Prerequisites
+
 - ✅ Python **3.9**, **3.10**, or **3.11**
 - ✅ [`uv`](https://github.com/astral-sh/uv) package manager
 
 ---
 
 ### 🔹 Steps (from PyPI or from Source)
-
 
 1️⃣ **Install **uv** and create a virtual environment.**<br>
 
@@ -112,6 +115,7 @@ Once installed, create the virtual environment
 ```sh
 uv venv --python PYTHON_VERSION --prompt hopwise
 ```
+
 `PYTHON_VERSION` must be one of 3.9, 3.10, 3.11, while `--prompt hopwise` customizes the virtual environment name that appears on the shell.
 
 2️⃣ **Install via PyPI**
@@ -123,11 +127,13 @@ uv pip install hopwise
 Some models require extra dependencies.
 In particular, language models for KG path reasoning require extra dependencies to be installed.
 You can install them by specifying the extra `pathlm` in the command line as follows:
+
 ```sh
 uv pip install hopwise[pathlm]
 ```
 
 Other models can be installed with a similar process. For instance, to install NNCF:
+
 ```sh
 uv pip install hopwise[nncf]
 ```
@@ -139,15 +145,15 @@ Please check the [PyPI page](https://pypi.org/project/hopwise/) for the complete
 ---
 
 2️⃣ **Install from source: Clone the repository**
+
 ```sh
 git clone https://github.com/tail-unica/hopwise.git
 cd hopwise
 ```
 
-
 3️⃣ Install project dependencies
 
-*📌 make sure to have uv updated to the latest version*
+_📌 make sure to have uv updated to the latest version_
 
 ```sh
 uv sync
@@ -158,7 +164,9 @@ uv sync
 **🎉 Done 🎉**
 
 ## 🚀 Usage
+
 In any chosen setup, a .yaml file must be created containing the configuration to be used. An example:
+
 ```yaml
 gpu_id: 0
 topk: [10,20,50,...]
@@ -178,8 +186,8 @@ eval_step: 1
     </a>
 </p>
 
-
 Run the project with the following command:
+
 ```sh
 hopwise train \
     --model MODEL \
@@ -188,11 +196,13 @@ hopwise train \
 ```
 
 Override config parameters directly from the CLI using =:
+
 ```sh
 hopwise train --epochs=20
 ```
 
 ### 📍 Evaluating from Checkpoint
+
 <p align="center">
     <a href="#readme">
         <img alt="pgprevaltest" src="https://github.com/tail-unica/hopwise/blob/main/assets/pgprevaluation.gif">
@@ -206,7 +216,7 @@ hopwise evaluate --dataset DATASET --model MODEL \
 
 ### 📍 Hyperparameters Tuning
 
-In addition to the configuration file, a params file with the extension *.hyper* the range of hyperparameters to be tested must also be set in this configuration
+In addition to the configuration file, a params file with the extension _.hyper_ the range of hyperparameters to be tested must also be set in this configuration
 
 ```yaml
 learning_rate uniform 0.0001, 0.1
@@ -227,6 +237,7 @@ hopwise tune \
 ```
 
 ## ℹ️ Contributing
+
 Please let us know if you encounter a bug or have any suggestions by filing an issue.
 
 We welcome all contributions from bug fixes to new features and extensions. 🚀
@@ -234,6 +245,7 @@ We welcome all contributions from bug fixes to new features and extensions. 🚀
 We expect all contributions discussed in the issue tracker and going through PRs. 📌
 
 ## 📜 Cite
+
 If you find **hopwise** useful for your research or development, please cite with:
 
 ```bibtex
@@ -244,9 +256,6 @@ the paper is under revision
 
 [Ludovico Boratto](https://www.ludovicoboratto.com/), [Gianni Fenu](https://web.unica.it/unica/it/ateneo_s07_ss01.page?contentId=SHD30371), [Mirko Marras](https://www.mirkomarras.com/), [Giacomo Medda](https://jackmedda.github.io/), [Alessandro Soccol](https://alessandrosocc.github.io)
 
-
-
-
 ## License
-This project is licensed under the MIT License. See the LICENSE file for details.
 
+This project is licensed under the MIT License. See the LICENSE file for details.
