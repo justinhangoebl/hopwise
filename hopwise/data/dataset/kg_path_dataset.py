@@ -2,6 +2,9 @@
 # @Author : Giacomo Medda
 # @Email  : giacomo.medda@unica.it
 
+import hashlib
+import os
+import pickle
 import random
 import warnings
 from itertools import chain, zip_longest
@@ -48,6 +51,10 @@ class KnowledgePathDataset(KnowledgeBasedDataset):
         self._tokenized_dataset = None  # tokenized path dataset is generated with tokenize_path_dataset
         self._tokenizer = None
         self.used_ids = None
+
+        # Cache directory for path sampling
+        self.cache_dir = os.path.join(os.getcwd(), "cache", "path_sampling")
+        os.makedirs(self.cache_dir, exist_ok=True)
 
         self._init_tokenizer()
 
@@ -290,6 +297,55 @@ class KnowledgePathDataset(KnowledgeBasedDataset):
             )
         return tokenized_used_ids
 
+    def _get_cache_key(self):
+        """Generate a unique cache key based on dataset and path sampling configuration."""
+        # Include key parameters that affect path sampling
+        cache_params = {
+            'dataset_name': self.config['dataset'],
+            'path_hop_length': self.path_hop_length,
+            'max_paths_per_user': self.max_paths_per_user,
+            'strategy': self.strategy,
+            'temporal_causality': self.temporal_causality,
+            'collaborative_path': self.collaborative_path,
+            'restrict_by_phase': self.restrict_by_phase,
+            'max_consecutive_invalid': self.max_consecutive_invalid,
+            'user_num': self.user_num,
+            'item_num': self.item_num,
+            'inter_num': self.inter_num,
+        }
+
+        # Add strategy-specific parameters
+        if self.strategy in ["weighted-rw", "constrained-rw"]:
+            cache_params['max_tries_per_iid'] = self.config["path_sample_args"].get("MAX_RW_TRIES_PER_IID", 100)
+
+        # Create hash from parameters
+        cache_str = str(sorted(cache_params.items()))
+        cache_hash = hashlib.md5(cache_str.encode()).hexdigest()
+        return f"paths_{cache_hash}.pkl"
+
+    def _save_paths_to_cache(self, paths, cache_file):
+        """Save generated paths to cache file."""
+        cache_path = os.path.join(self.cache_dir, cache_file)
+        try:
+            with open(cache_path, 'wb') as f:
+                pickle.dump(paths, f, protocol=pickle.HIGHEST_PROTOCOL)
+            self.logger.info(f"Saved {len(paths)} paths to cache: {cache_path}")
+        except Exception as e:
+            self.logger.warning(f"Failed to save paths to cache: {e}")
+
+    def _load_paths_from_cache(self, cache_file):
+        """Load generated paths from cache file."""
+        cache_path = os.path.join(self.cache_dir, cache_file)
+        if os.path.exists(cache_path):
+            try:
+                with open(cache_path, 'rb') as f:
+                    paths = pickle.load(f)
+                self.logger.info(f"Loaded {len(paths)} paths from cache: {cache_path}")
+                return paths
+            except Exception as e:
+                self.logger.warning(f"Failed to load paths from cache: {e}")
+        return None
+
     def generate_user_path_dataset(self):
         """Generate path dataset by sampling paths from the knowledge graph.
 
@@ -304,7 +360,18 @@ class KnowledgePathDataset(KnowledgeBasedDataset):
             raise ValueError("The data should be prepared before generating the path dataset.")
 
         if self._path_dataset is None:
-            generated_paths = self.generate_user_paths()
+            # Try to load from cache first
+            cache_file = self._get_cache_key()
+            cached_paths = self._load_paths_from_cache(cache_file)
+
+            if cached_paths is not None:
+                generated_paths = cached_paths
+                self.logger.info("Using cached path sampling results")
+            else:
+                self.logger.info("No cache found, generating paths from scratch...")
+                generated_paths = self.generate_user_paths()
+                # Save to cache for future use
+                self._save_paths_to_cache(generated_paths, cache_file)
 
             path_string = ""
             for path in generated_paths:

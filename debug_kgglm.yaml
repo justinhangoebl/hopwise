@@ -1,0 +1,40 @@
+# Debug configuration for KGGLM - fast path sampling for debugging
+# Usage: hopwise train KGGLM ml-100k --config-files debug_kgglm.yaml
+
+# Fast training settings for debugging
+epochs: 1
+pretrain_epochs: 1
+eval_step: 1
+train_batch_size: 4
+eval_batch_size: 4
+
+# Minimal path sampling for fast debugging
+path_hop_length: 3
+MAX_PATHS_PER_USER: 2 # Very small for debugging
+
+# Dataset filtering to keep only ~100 users (simplified)
+min_user_inter_num: 15 # Users must have at least 15 interactions
+min_item_inter_num: 10 # Items must have at least 10 interactions
+
+path_sample_args:
+  restrict_by_phase: False
+  pretrain_hop_length: (2,2)
+  pretrain_paths: 1
+  temporal_causality: False
+  strategy: simple-ui
+  MAX_RW_TRIES_PER_IID: 1
+  parallel_max_workers: 1
+  MAX_CONSECUTIVE_INVALID: 3 # Reduced for debugging
+
+# Tokenizer configuration
+tokenizer:
+  model: WordLevel
+  special_tokens:
+    mask_token: "[MASK]"
+    unk_token: "[UNK]"
+    pad_token: "[PAD]"
+    bos_token: "[BOS]"
+    eos_token: "[EOS]"
+
+# Debug logging
+show_progress: True

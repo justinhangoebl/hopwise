@@ -501,7 +501,16 @@ class Trainer(AbstractTrainer):
         scores = scores.view(-1, tot_item_num)
         scores[:, 0] = -np.inf
         if history_index is not None:
-            scores[history_index] = -np.inf
+            # Filter history_index to only include valid indices for the current scores tensor
+            valid_history_index = history_index[history_index < scores.numel()]
+            if len(valid_history_index) > 0:
+                # Convert flat indices to 2D indices for the reshaped scores tensor
+                row_indices = valid_history_index // tot_item_num
+                col_indices = valid_history_index % tot_item_num
+                # Only use indices that are within the actual scores tensor bounds
+                valid_mask = row_indices < scores.shape[0]
+                if valid_mask.any():
+                    scores[row_indices[valid_mask], col_indices[valid_mask]] = -np.inf
         return interaction, scores, positive_u, positive_i
 
     def _neg_sample_batch_eval(self, batched_data, tot_item_num=None):
@@ -730,7 +739,16 @@ class KGTrainer(Trainer):
         scores = scores.view(-1, tot_column_num)
         scores[:, 0] = -np.inf
         if history_index is not None:
-            scores[history_index] = -np.inf
+            # Filter history_index to only include valid indices for the current scores tensor
+            valid_history_index = history_index[history_index < scores.numel()]
+            if len(valid_history_index) > 0:
+                # Convert flat indices to 2D indices for the reshaped scores tensor
+                row_indices = valid_history_index // tot_column_num
+                col_indices = valid_history_index % tot_column_num
+                # Only use indices that are within the actual scores tensor bounds
+                valid_mask = row_indices < scores.shape[0]
+                if valid_mask.any():
+                    scores[row_indices[valid_mask], col_indices[valid_mask]] = -np.inf
         return interaction, scores, positive_h, positive_t
 
     def _split_predict_fn(self, interaction, batch_size, predict_fn):
@@ -1028,7 +1046,16 @@ class ExplainableTrainer(Trainer):
         scores = scores.view(-1, tot_item_num)
         scores[:, 0] = -np.inf
         if history_index is not None:
-            scores[history_index] = -np.inf
+            # Filter history_index to only include valid indices for the current scores tensor
+            valid_history_index = history_index[history_index < scores.numel()]
+            if len(valid_history_index) > 0:
+                # Convert flat indices to 2D indices for the reshaped scores tensor
+                row_indices = valid_history_index // tot_item_num
+                col_indices = valid_history_index % tot_item_num
+                # Only use indices that are within the actual scores tensor bounds
+                valid_mask = row_indices < scores.shape[0]
+                if valid_mask.any():
+                    scores[row_indices[valid_mask], col_indices[valid_mask]] = -np.inf
 
         return interaction, (scores, paths), positive_u, positive_i
 
@@ -1298,7 +1325,16 @@ class TPRecTrainer(PretrainTrainer):
         scores = scores.view(-1, tot_item_num)
         scores[:, 0] = -np.inf
         if history_index is not None:
-            scores[history_index] = -np.inf
+            # Filter history_index to only include valid indices for the current scores tensor
+            valid_history_index = history_index[history_index < scores.numel()]
+            if len(valid_history_index) > 0:
+                # Convert flat indices to 2D indices for the reshaped scores tensor
+                row_indices = valid_history_index // tot_item_num
+                col_indices = valid_history_index % tot_item_num
+                # Only use indices that are within the actual scores tensor bounds
+                valid_mask = row_indices < scores.shape[0]
+                if valid_mask.any():
+                    scores[row_indices[valid_mask], col_indices[valid_mask]] = -np.inf
 
         if paths is not None:
             return interaction, (scores, paths), positive_u, positive_i
