@@ -181,8 +181,8 @@ class KIGER(KGGLM):
         outputs = super().generate(inputs, top_k=top_k, paths_per_user=paths_per_user, **kwargs)
         
         # Log semantic token usage
-        semantic_tokens = [token for token in outputs['generated_tokens'] if token.startswith(self.semantic_token_prefix)]
-        self.logger.info(f"Semantic tokens used: {semantic_tokens}")
+        # semantic_tokens = [token for token in outputs['generated_tokens'] if token.startswith(self.semantic_token_prefix)]
+        # self.logger.info(f"Semantic tokens used: {semantic_tokens}")
         
         return outputs
 
