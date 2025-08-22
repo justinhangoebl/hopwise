@@ -33,10 +33,10 @@ embedding_size: 64
 reg_weight: 1e-05
 
 # Training parameters
-epochs: 300
+epochs: 1
 learning_rate: 0.001
-train_batch_size: 2048
-eval_batch_size: 128
+train_batch_size: 8
+eval_batch_size: 2
 weight_decay: 0.0
 
 # Evaluation metrics

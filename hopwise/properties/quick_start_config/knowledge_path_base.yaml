@@ -11,7 +11,7 @@ kg_reverse_r: False # (bool) Whether to reverse relations of triples for bidirec
 entity_kg_num_interval: "[0,inf)" # (str) Entity interval for filtering kg.
 relation_kg_num_interval: "[0,inf)" # (str) Relation interval for filtering kg.
 path_hop_length: 3 # (int) Number of hops in the knowledge path.
-MAX_PATHS_PER_USER: 250 # (int) Maximum number of kg sampled paths per user.
+MAX_PATHS_PER_USER: 50 # (int) Maximum number of kg sampled paths per user.
 metapaths: ~ # (list) Metapaths used to sample paths.
 path_sample_args:
   temporal_causality: False # (bool) Whether to use temporal causality.

@@ -12,10 +12,6 @@ eval_batch_size: 4
 path_hop_length: 3
 MAX_PATHS_PER_USER: 2 # Very small for debugging
 
-# Dataset filtering to keep only ~100 users (simplified)
-min_user_inter_num: 15 # Users must have at least 15 interactions
-min_item_inter_num: 10 # Items must have at least 10 interactions
-
 path_sample_args:
   restrict_by_phase: False
   pretrain_hop_length: (2,2)

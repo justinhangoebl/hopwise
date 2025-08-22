@@ -347,7 +347,7 @@ class Config:
             if self.final_config_dict["loss_type"] in ["CE"]:
                 if (
                     self.final_config_dict["MODEL_TYPE"] == ModelType.SEQUENTIAL
-                    and self.final_config_dict.get("train_neg_sample_args") is not None
+                    and self.final_config_dict["train_neg_sample_args"] is not None
                 ):
                     raise ValueError(
                         f"train_neg_sample_args [{self.final_config_dict['train_neg_sample_args']}] should be None "
@@ -361,7 +361,7 @@ class Config:
 
         # handle special cases for models that needs pretrain in one way
         if self.final_config_dict["model"] in ["TPRec"]:
-            train_stage = self.final_config_dict.get("train_stage")
+            train_stage = self.final_config_dict["train_stage"]
 
             if train_stage is not None and train_stage in ["pretrain"]:
                 self.final_config_dict["MODEL_INPUT_TYPE"] = InputType.PAIRWISE
@@ -569,7 +569,7 @@ class Config:
                 self.final_config_dict["verbose"] = False
 
     def _set_train_neg_sample_args(self):
-        train_neg_sample_args = self.final_config_dict.get("train_neg_sample_args")
+        train_neg_sample_args = self.final_config_dict["train_neg_sample_args"]
         if train_neg_sample_args is None or train_neg_sample_args == "None":
             self.final_config_dict["train_neg_sample_args"] = {
                 "distribution": "none",
@@ -623,7 +623,7 @@ class Config:
         """
         import torch
 
-        weight_precision = self.final_config_dict.get("weight_precision", "float32")
+        weight_precision = self.final_config_dict["weight_precision"]
 
         if weight_precision == "float32":
             weight_precision = torch.float32
@@ -643,7 +643,7 @@ class Config:
         # Updates global progress bar API based on config
         import hopwise.utils.logger as logger_module
 
-        progress_bar = logger_module.ProgressBar(self.final_config_dict.get("progress_bar_rich", True))
+        progress_bar = logger_module.ProgressBar(self.final_config_dict["progress_bar_rich"])
         setattr(logger_module, "_progress_bar", progress_bar)
 
     def __setitem__(self, key, value):
