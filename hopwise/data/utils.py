@@ -52,6 +52,13 @@ def create_dataset(config):
             ModelType.DECISIONTREE: "Dataset",
             ModelType.PATH_LANGUAGE_MODELING: "KnowledgePathDataset",
         }
+        dataset_class_name = type2class[model_type]
+        # Use ChunkedKnowledgePathDataset if requested
+        if (
+            dataset_class_name == "KnowledgePathDataset"
+            and config.get("use_chunked_loading", False)
+        ):
+            dataset_class = getattr(dataset_module, "ChunkedKnowledgePathDataset")
         dataset_class = getattr(dataset_module, type2class[model_type])
 
     default_file = os.path.join(config["checkpoint_dir"], f"{config['dataset']}-{dataset_class.__name__}.pth")

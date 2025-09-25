@@ -10,11 +10,11 @@ for item representation in knowledge graph paths.
 
 import re
 from typing import List, Dict, Optional
-from hopwise.data.dataset.kg_path_dataset import KnowledgePathDataset
+from hopwise.data.dataset.kg_path_dataset import ChunkedKnowledgePathDataset
 from hopwise.utils import PathLanguageModelingTokenType, set_color
 
 
-class KIGERDataset(KnowledgePathDataset):
+class KIGERDataset(ChunkedKnowledgePathDataset):
     """Extended KG Path Dataset with RQ-VAE semantic item representations."""
     
     def __init__(self, config, dataset=None):

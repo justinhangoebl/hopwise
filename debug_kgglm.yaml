@@ -1,16 +1,14 @@
 # Debug configuration for KGGLM - fast path sampling for debugging
 # Usage: hopwise train KGGLM ml-100k --config-files debug_kgglm.yaml
 
-# Fast training settings for debugging
-epochs: 1
-pretrain_epochs: 1
-eval_step: 1
-train_batch_size: 4
-eval_batch_size: 4
+# Enable chunked processing for memory constraints
+use_chunked_loading: true
+path_chunk_size: 2000 # Small chunks for debugging
 
-# Minimal path sampling for fast debugging
+# Existing debug settings
+epochs: 1
 path_hop_length: 9
-MAX_PATHS_PER_USER: 2 # Very small for debugging
+MAX_PATHS_PER_USER: 2
 
 path_sample_args:
   restrict_by_phase: False

@@ -1195,3 +1195,84 @@ def _add_paths_relations_parallel(paths, paths_with_relations, relation_map):
             paths_with_relations[path_idx, start_path] = path[node_idx]
             paths_with_relations[path_idx, start_path + 1] = edge_id
             paths_with_relations[path_idx, start_path + 2] = path[node_idx + 1]
+
+class ChunkedKnowledgePathDataset(KnowledgePathDataset):
+    def __init__(self, config):
+        super().__init__(config)
+        self.chunk_size = config["path_chunk_size"]
+        self.use_chunked_loading = config["use_chunked_loading"]
+        self._chunk_metadata = None
+        
+    def generate_user_path_dataset(self):
+        """Override to support chunked generation and loading."""
+        if not isinstance(self.inter_feat, Interaction):
+            raise ValueError("The data should be prepared before generating the path dataset.")
+
+        if self._path_dataset is None:
+            cache_file = self._get_cache_key()
+            
+            if self.use_chunked_loading:
+                # Try to load chunked metadata
+                if self._load_chunked_metadata(cache_file):
+                    self.logger.info("Using chunked cached path sampling results")
+                    # Create a lazy-loading path dataset
+                    self._path_dataset = ChunkedPathString(self, cache_file)
+                else:
+                    self.logger.info("Generating and caching paths in chunks...")
+                    self._generate_chunked_paths(cache_file)
+                    self._path_dataset = ChunkedPathString(self, cache_file)
+            else:
+                # Original behavior
+                cached_paths = self._load_paths_from_cache(cache_file)
+                if cached_paths is not None:
+                    generated_paths = cached_paths
+                else:
+                    generated_paths = self.generate_user_paths()
+                    self._save_paths_to_cache(generated_paths, cache_file)
+                
+                path_string = ""
+                for path in generated_paths:
+                    path_string += self._format_path(path) + "\n"
+                self._path_dataset = path_string
+    def _load_chunked_metadata(self, cache_file):
+        """Load chunked metadata from cache."""
+        metadata_file = f"{cache_file}_metadata.pkl"
+        metadata = self._load_paths_from_cache(metadata_file)
+        if metadata is not None:
+            self._chunk_metadata = metadata
+            return True
+        return False
+
+    def _generate_chunked_paths(self, cache_file):
+        """Generate paths and save in chunks."""
+        generated_paths = self.generate_user_paths()
+        
+        # Split into chunks
+        chunks = []
+        for i in range(0, len(generated_paths), self.chunk_size):
+            chunk = generated_paths[i:i + self.chunk_size]
+            chunk_file = f"{cache_file}_chunk_{i//self.chunk_size}.pkl"
+            self._save_paths_to_cache(chunk, chunk_file)
+            chunks.append({
+                'file': chunk_file,
+                'size': len(chunk),
+                'start_idx': i,
+                'end_idx': i + len(chunk)
+            })
+        
+        # Save metadata
+        metadata = {
+            'total_chunks': len(chunks),
+            'chunk_size': self.chunk_size,
+            'total_paths': len(generated_paths),
+            'chunks': chunks
+        }
+        self._save_paths_to_cache(metadata, f"{cache_file}_metadata.pkl")
+        self._chunk_metadata = metadata
+
+class ChunkedPathString:
+    """Lazy-loading string-like object for chunked paths."""
+    def __init__(self, dataset, cache_file):
+        self.dataset = dataset
+        self.cache_file = cache_file
+        self._cached_chunks = {}

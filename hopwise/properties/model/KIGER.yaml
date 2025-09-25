@@ -2,6 +2,8 @@
 # Extends KGGLM with RQ-VAE semantic item representations
 
 # Base KGGLM settings
+use_chunked_loading: true
+path_chunk_size: 8000
 learning_rate: 2e-4
 weight_decay: 0.01
 warmup_steps: 250
@@ -38,7 +40,7 @@ kiger:
   use_semantic_ids: true
   semantic_token_prefix: "SEM"
   n_quantization_layers: 3
-  codebook_size: 512  # Changed from 256 to 128
+  codebook_size: 512 # Changed from 256 to 128
 
   # Paths to RQ-VAE model and semantic mappings
   rqvae_model_path: "hopwise/external/rqvae/saved_models/rqvae_ml1m_item.pt"
@@ -51,7 +53,7 @@ kiger:
     hidden_dims: [768, 512, 256]
     commitment_weight: 0.25
     n_quantization_layers: 3
-    codebook_size: 512  # Changed from 256 to 128
+    codebook_size: 512 # Changed from 256 to 128
 
 rqvae_config:
   use_semantic_ids: true
@@ -61,10 +63,7 @@ rqvae_config:
   hidden_dims: [768, 512, 256]
   commitment_weight: 0.25
   n_quantization_layers: 3
-  codebook_size: 512  # Changed from 256 to 128
+  codebook_size: 512 # Changed from 256 to 128
   # Use ML-100k mapping instead of ML-1M
   model_path: "hopwise/external/rqvae/saved_models/rqvae_ml100k_items.pt"
   semantic_mapping_path: "hopwise/external/rqvae/mappings/ml100k_item_semids.pt"
-
-
-
