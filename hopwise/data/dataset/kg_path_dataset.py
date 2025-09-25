@@ -507,6 +507,9 @@ class KnowledgePathDataset(KnowledgeBasedDataset):
         user_paths = _generate_user_paths_constrained_random_walk_per_user(
             graph, used_ids, self.iid_field, self.entity_field, **kwargs
         )
+        # user_paths = _generate_user_paths_random_walk_per_user(
+        #     graph, used_ids, self.iid_field, self.entity_field, **kwargs
+        # )
         paths = set.union(*user_paths)
 
         return paths
@@ -886,6 +889,78 @@ def _generate_user_paths_constrained_random_walk_per_user(graph, used_ids, iid_f
 
             if user_path_sample_size >= max_paths_per_user or user_invalid_paths <= 0:
                 break
+
+        return user_paths
+
+    return process_user
+
+@user_parallel_sampling
+def _generate_user_paths_random_walk_per_user(graph, used_ids, iid_field, entity_field, **kwargs):
+    """Random-walk style constrained path generation (linear in hop length)."""
+    temporal_matrix = kwargs.pop("temporal_matrix", None)
+    path_hop_length = kwargs.pop("path_hop_length", None)
+    user_num = kwargs.pop("user_num", None)
+    max_paths_per_user = kwargs.pop("max_paths_per_user", None)
+    restrict_by_phase = kwargs.pop("restrict_by_phase", None)
+    collaborative_path = kwargs.pop("collaborative_path", None)
+    max_consecutive_invalid = kwargs.pop("max_consecutive_invalid", None)
+
+    node_types = np.array(graph.vs["type"])
+    neighbors_cache = [np.array(graph.neighbors(v), dtype=np.int32) for v in range(graph.vcount())]
+
+    def process_user(u):
+        user_paths = set()
+        user_invalid_paths = max_consecutive_invalid
+
+        # Positive items for this user
+        pos_iid = np.fromiter(used_ids[u], dtype=np.int32)
+        if temporal_matrix is not None:
+            pos_iid = pos_iid[np.argsort(temporal_matrix[u, pos_iid])]
+        pos_iid += user_num  # reindex items
+
+        while len(user_paths) < max_paths_per_user and user_invalid_paths > 0:
+            pos_iid_range = _check_temporal_causality_feasibility(temporal_matrix, pos_iid)
+            if pos_iid_range is None:
+                break
+
+            start_node_idx = np.random.randint(pos_iid_range)
+            start_node = pos_iid[start_node_idx]
+
+            if restrict_by_phase and temporal_matrix is not None:
+                item_candidates = pos_iid[start_node_idx + 1 :]
+            else:
+                item_candidates = None
+
+            path = [u, start_node]
+            node = start_node
+            success = True
+
+            for hop in range(1, path_hop_length + 1):
+                neigh = neighbors_cache[node]
+                if hop == path_hop_length and item_candidates is not None:
+                    cand_nodes = item_candidates
+                else:
+                    if hop == path_hop_length:
+                        mask = (node_types[neigh] == iid_field)
+                    elif collaborative_path:
+                        mask = (node_types[neigh] != iid_field)
+                    else:
+                        mask = (node_types[neigh] == entity_field)
+                    mask &= (neigh != node)
+                    cand_nodes = neigh[mask]
+
+                if cand_nodes.size == 0:
+                    success = False
+                    break
+
+                node = np.random.choice(cand_nodes)
+                path.append(node)
+
+            if success:
+                user_paths.add(tuple(path))
+                user_invalid_paths = max_consecutive_invalid
+            else:
+                user_invalid_paths -= 1
 
         return user_paths
 

@@ -10,8 +10,8 @@ num_heads: 12
 num_layers: 6
 use_kg_token_types: True
 
-save_step: 50
-pretrain_epochs: 1
+save_step: 16
+pretrain_epochs: 32
 train_stage: "pretrain"
 pre_model_path: ""
 
@@ -22,7 +22,7 @@ sequence_postprocessor: Cumulative
 
 # Path sampling configuration (optimized for semantic integration)
 path_hop_length: 3
-MAX_PATHS_PER_USER: 10
+MAX_PATHS_PER_USER: 24
 
 path_sample_args:
   restrict_by_phase: False
@@ -38,11 +38,11 @@ kiger:
   use_semantic_ids: true
   semantic_token_prefix: "SEM"
   n_quantization_layers: 3
-  codebook_size: 128  # Changed from 256 to 128
+  codebook_size: 512  # Changed from 256 to 128
 
   # Paths to RQ-VAE model and semantic mappings
-  rqvae_model_path: "hopwise/external/rqvae/saved_models/rqvae_ml100k_item.pt"
-  semantic_mapping_path: "hopwise/external/rqvae/mappings/ml100k_item_semids.pt"
+  rqvae_model_path: "hopwise/external/rqvae/saved_models/rqvae_ml1m_item.pt"
+  semantic_mapping_path: "hopwise/external/rqvae/mappings/ml1m_item_semids.pt"
 
   # RQ-VAE model configuration (used if loading from checkpoint)
   rqvae_config:
@@ -51,7 +51,7 @@ kiger:
     hidden_dims: [768, 512, 256]
     commitment_weight: 0.25
     n_quantization_layers: 3
-    codebook_size: 128  # Changed from 256 to 128
+    codebook_size: 512  # Changed from 256 to 128
 
 rqvae_config:
   use_semantic_ids: true
@@ -61,21 +61,10 @@ rqvae_config:
   hidden_dims: [768, 512, 256]
   commitment_weight: 0.25
   n_quantization_layers: 3
-  codebook_size: 128  # Changed from 256 to 128
+  codebook_size: 512  # Changed from 256 to 128
   # Use ML-100k mapping instead of ML-1M
   model_path: "hopwise/external/rqvae/saved_models/rqvae_ml100k_items.pt"
   semantic_mapping_path: "hopwise/external/rqvae/mappings/ml100k_item_semids.pt"
-
-
-
-path_sample_args:
-  restrict_by_phase: False # (bool) Whether to restrict the last item in the reasoning path by the used ids in the dataloader phase.
-  pretrain_hop_length: (2,2) # (tuple) The range of the hop length for pre-training.
-  pretrain_paths: 1 # (int) Number of paths for pre-training. i.e. how many paths per entity?
-  temporal_causality: False
-  strategy: simple-ui
-  MAX_RW_TRIES_PER_IID: 1 # (int) Maximum number of tries per positive item (during pretraining applies per entity).
-  parallel_max_workers: 1 # (int) Reduce parallelism to avoid memory issues
 
 
 

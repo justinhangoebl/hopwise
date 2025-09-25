@@ -5,8 +5,8 @@
 dataset: ml-100k
 
 # Training settings optimized for ml-100k
-epochs: 1
-train_batch_size: 2048
+epochs: 22
+train_batch_size: 256
 eval_batch_size: 128
 learning_rate: 0.001
 weight_decay: 0.0
@@ -25,7 +25,7 @@ topk: [10, 20]
 # Model specific settings for ml-100k
 embedding_size: 64
 n_layers: 1
-reg_weight: 1e-05
+# reg_weight: 1e-05
 
 # Knowledge graph settings for ml-100k
 kg_embedding_size: 64

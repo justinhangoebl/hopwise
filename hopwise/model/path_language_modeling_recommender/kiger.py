@@ -74,40 +74,45 @@ class KIGER(KGGLM):
             raise
     
     def _load_rqvae_model(self, model_path: str, config):
-        """Load pretrained RQ-VAE model."""
         try:
             device = config["device"]
+
+            # Force-load as weights (avoid loading pickled Module objects)
             checkpoint = torch.load(model_path, map_location=device)
-            
-            # Extract model configuration from checkpoint if available
-            if 'model_config' in checkpoint:
-                model_config = checkpoint['model_config']
+
+            if isinstance(checkpoint, dict):
+                if "model_state_dict" in checkpoint:
+                    state_dict = checkpoint["model_state_dict"]
+                    model_config = checkpoint.get("model_config", None)
+                else:
+                    state_dict = checkpoint
+                    model_config = None
             else:
-                # Use configuration that matches the checkpoint architecture
+                # Unexpected: checkpoint is a full Module, extract state_dict
+                self.logger.warning("Checkpoint is a full nn.Module, extracting state_dict...")
+                state_dict = checkpoint.state_dict()
+                model_config = getattr(checkpoint, "model_config", None)
+
+            # Default config if not inside checkpoint
+            if model_config is None:
                 model_config = {
-                    'input_dim': 768,
-                    'latent_dim': 256,
-                    'hidden_dims': [768, 512, 256],  # Match checkpoint architecture
-                    'codebook_size': self.codebook_size,
-                    'n_quantization_layers': self.n_quantization_layers,
-                    'commitment_weight': 0.25,
+                    "input_dim": 768,
+                    "latent_dim": 256,
+                    "hidden_dims": [768, 512, 256],
+                    "codebook_size": self.codebook_size,
+                    "n_quantization_layers": self.n_quantization_layers,
+                    "commitment_weight": 0.25,
                 }
-            
-            # Initialize RQ-VAE model
+
+            # Build fresh model and load weights
             from hopwise.external.rqvae.modules.rq_vae import RQ_VAE
             self.rqvae_model = RQ_VAE(**model_config)
-            
-            # Load model weights
-            if 'model_state_dict' in checkpoint:
-                self.rqvae_model.load_state_dict(checkpoint['model_state_dict'])
-            else:
-                self.rqvae_model.load_state_dict(checkpoint)
-            
+            self.rqvae_model.load_state_dict(state_dict, strict=False)
             self.rqvae_model.eval()
             self.rqvae_model.to(device)
-            
+
             self.logger.info(f"Loaded RQ-VAE model from {model_path}")
-            
+
         except Exception as e:
             self.logger.warning(f"Failed to load RQ-VAE model: {e}")
             self.rqvae_model = None

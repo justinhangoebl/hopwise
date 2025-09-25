@@ -220,6 +220,7 @@ class Trainer(AbstractTrainer):
             multiple parts and the model return these multiple parts loss instead of the sum of loss, it will return a
             tuple which includes the sum of loss in each part.
         """
+        torch.cuda.empty_cache()
         self.model.train()
         loss_func = loss_func or self.model.calculate_loss
         total_loss = None
@@ -1963,6 +1964,8 @@ class HFPathLanguageModelingTrainer(ExplainableTrainer):
 
     def __init__(self, config, model):
         super().__init__(config, model)
+        if hasattr(self.model, "config"):
+            self.model.config.use_cache = False
 
         self.path_generation_args = self.config["path_generation_args"]
 
@@ -1985,7 +1988,7 @@ class HFPathLanguageModelingTrainer(ExplainableTrainer):
             learning_rate=self.learning_rate,
             weight_decay=self.weight_decay,
             bf16=False,
-            fp16=self.enable_amp,
+            fp16=True,
             num_train_epochs=self.epochs,
             per_device_train_batch_size=self.config["train_batch_size"],
             per_device_eval_batch_size=self.test_batch_size,
@@ -2118,6 +2121,7 @@ class HFPathLanguageModelingTrainer(ExplainableTrainer):
                 callback_fn=callback_fn,
             )
 
+        torch.cuda.empty_cache()
         self.hf_trainer.train()
         self.hf_trainer.save_model()
 
@@ -2190,7 +2194,7 @@ class KGGLMTrainer(HFPathLanguageModelingTrainer, PretrainTrainer):
             hf_callbacks=[PretrainSaveCallback(self)],
             training_args=pretrain_args,
         )
-
+        torch.cuda.empty_cache()
         self.hf_trainer.train()
 
         return self.best_valid_score, self.best_valid_result

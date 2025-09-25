@@ -22,7 +22,7 @@ user_inter_num_interval: "[0,50]" # Users must have 5-50 interactions
 item_inter_num_interval: "[0,inf)" # Items must have at least 2 interactions
 
 # Knowledge Path Sampling-based Model Needed
-path_hop_length: 3 # Reduced from 3
+path_hop_length: 9 # Reduced from 3
 MAX_PATHS_PER_USER: 2 # Keep small for debugging
 context_length: ~ # (int) Maximum length of the context. Set to (path_hop_length * 2) + 1 (U) + 2 (BOS/EOS) by default.
 metapaths: ~ # (list) Metapaths used to sample paths.

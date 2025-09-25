@@ -30,10 +30,10 @@ relation_kg_num_interval: "[0,inf)"
 
 # Default model parameters
 embedding_size: 64
-reg_weight: 1e-05
+# reg_weight: 1e-05
 
 # Training parameters
-epochs: 1
+epochs: 22
 learning_rate: 0.001
 train_batch_size: 8
 eval_batch_size: 2

@@ -6,7 +6,7 @@ load_col:
   user: [user_id, gender, age]
 
 # Reduced path sampling
-path_hop_length: 3
+path_hop_length: 9
 MAX_PATHS_PER_USER: 10
 
 path_sample_args:

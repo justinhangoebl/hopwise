@@ -7,7 +7,7 @@ num_layers: 6 # (int) Number of layers in the transformer.
 use_kg_token_types: True # (bool) Whether to use token types for the knowledge graph.
 
 save_step: 50 # (int) Number of steps to save the model during pre-training.
-pretrain_epochs: 1 # (int) Number of epochs for pre-training.
+pretrain_epochs: 22 # (int) Number of epochs for pre-training.
 train_stage: "pretrain" # (str) The training stage. Range in ['pretrain', 'finetune'].
 pre_model_path: "" # (str) The path of pretrained model.
 
