@@ -186,8 +186,13 @@ class KIGER(KGGLM):
         outputs = super().generate(inputs, top_k=top_k, paths_per_user=paths_per_user, **kwargs)
         
         # Log semantic token usage
+        self.logger.info(f"Semantic tokens used: {type(outputs)}")
+        try:
+            self.logger.info(outputs.keys())
+        except:
+            pass
         # semantic_tokens = [token for token in outputs['generated_tokens'] if token.startswith(self.semantic_token_prefix)]
-        # self.logger.info(f"Semantic tokens used: {semantic_tokens}")
+        #self.logger.info(f"Semantic tokens used: {semantic_tokens}")
         
         return outputs
 
@@ -196,13 +201,3 @@ class KIGER(KGGLM):
         result = super().validation_step(batch)
         
         return result
-
-
-
-
-
-
-
-
-
-

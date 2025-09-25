@@ -363,6 +363,7 @@ class KnowledgePathDataset(KnowledgeBasedDataset):
         if self._path_dataset is None:
             # Try to load from cache first
             cache_file = self._get_cache_key()
+            self.logger.info(cache_file)
             cached_paths = self._load_paths_from_cache(cache_file)
 
             if cached_paths is not None:
