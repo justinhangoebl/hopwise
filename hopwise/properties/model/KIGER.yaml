@@ -12,8 +12,9 @@ num_heads: 12
 num_layers: 6
 use_kg_token_types: True
 
-save_step: 16
-pretrain_epochs: 32
+save_step: 1
+eval_steps: 1
+pretrain_epochs: 3
 train_stage: "pretrain"
 pre_model_path: ""
 
@@ -24,7 +25,7 @@ sequence_postprocessor: Cumulative
 
 # Path sampling configuration (optimized for semantic integration)
 path_hop_length: 3
-MAX_PATHS_PER_USER: 24
+MAX_PATHS_PER_USER: 5
 
 path_sample_args:
   restrict_by_phase: False

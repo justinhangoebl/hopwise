@@ -56,7 +56,7 @@ def create_dataset(config):
         # Use ChunkedKnowledgePathDataset if requested
         if (
             dataset_class_name == "KnowledgePathDataset"
-            and config.get("use_chunked_loading", False)
+            and config["use_chunked_loading"]
         ):
             dataset_class = getattr(dataset_module, "ChunkedKnowledgePathDataset")
         dataset_class = getattr(dataset_module, type2class[model_type])

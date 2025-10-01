@@ -25,6 +25,7 @@ import os
 from collections import defaultdict
 from logging import getLogger
 from time import time
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -251,6 +252,8 @@ class Trainer(AbstractTrainer):
                 losses = loss_func(interaction)
 
             if isinstance(losses, tuple):
+                if epoch_idx < self.config["warm_up_step"]:
+                    losses = losses[:-1]
                 loss = sum(losses)
                 loss_tuple = tuple(per_loss.item() for per_loss in losses)
                 total_loss = loss_tuple if total_loss is None else tuple(map(sum, zip(total_loss, loss_tuple)))
@@ -307,32 +310,58 @@ class Trainer(AbstractTrainer):
             self.logger.info(set_color("Saving current", "blue") + f": {saved_model_file}")
 
     def resume_checkpoint(self, resume_file):
-        r"""Load the model parameters information and training information.
+        """
+        Load the model parameters and training information based on the directory name,
+        and navigate into subdirectories if necessary.
+        Also handles both HuggingFace and Hopwise formats by reading corresponding files.
 
         Args:
-            resume_file (file): the checkpoint file
-
+            resume_file (str): the path to the directory containing the checkpoint files or subdirectories
         """
-        resume_file = str(resume_file)
-        self.saved_model_file = resume_file
-        checkpoint = torch.load(resume_file, map_location=self.device, weights_only=False)
+        from safetensors.torch import load_file
+        from transformers import AutoTokenizer
+
+        if not hasattr(self, "hf_trainer"):
+            raise ValueError("The HuggingFace Trainer has not been initialized. Please call `init_hf_trainer` first.")
+
+        # Check both the directory name and its parent for the prefix
+        resume_path = Path(resume_file)
+        dir_name = resume_path.name
+        parent_name = resume_path.parent.name
+        
+        # Check if this is a checkpoint subdirectory (e.g., checkpoint-74790)
+        if dir_name.startswith('checkpoint-') and (
+            parent_name.startswith(self.HUGGINGFACE_SAVE_PATH_SUFFIX) or 
+            parent_name.startswith(self.HOPWISE_SAVE_PATH_SUFFIX)
+        ):
+            # Use the parent directory for prefix matching
+            if parent_name.startswith(self.HUGGINGFACE_SAVE_PATH_SUFFIX):
+                hf_resume_file = str(resume_path)
+                hopwise_resume_file = str(resume_path.parent).replace(
+                    self.HUGGINGFACE_SAVE_PATH_SUFFIX, self.HOPWISE_SAVE_PATH_SUFFIX
+                ) + ".pth"
+            else:
+                hopwise_resume_file = str(resume_path.parent) + ".pth"
+                hf_resume_file = str(resume_path.parent).replace(
+                    self.HOPWISE_SAVE_PATH_SUFFIX, self.HUGGINGFACE_SAVE_PATH_SUFFIX
+                )
+        elif dir_name.startswith(self.HUGGINGFACE_SAVE_PATH_SUFFIX):
+            hf_resume_file = resume_file
+            hopwise_resume_file = resume_file.replace(self.HUGGINGFACE_SAVE_PATH_SUFFIX, self.HOPWISE_SAVE_PATH_SUFFIX)
+        elif dir_name.startswith(self.HOPWISE_SAVE_PATH_SUFFIX):
+            hopwise_resume_file = resume_file
+            hf_resume_file = resume_file.replace(self.HOPWISE_SAVE_PATH_SUFFIX, self.HUGGINGFACE_SAVE_PATH_SUFFIX)
+        else:
+            raise ValueError(f"The directory name [{resume_file}] does not indicate a HuggingFace or Hopwise model.")
+
+        checkpoint = torch.load(hopwise_resume_file, map_location=self.device, weights_only=False)
         self.start_epoch = checkpoint["epoch"] + 1
         self.cur_step = checkpoint["cur_step"]
         self.best_valid_score = checkpoint["best_valid_score"]
 
-        # load architecture params from checkpoint
-        if checkpoint["config"]["model"].lower() != self.config["model"].lower():
-            self.logger.warning(
-                "Architecture configuration given in config file is different from that of checkpoint. "
-                "This may yield an exception while state_dict is being loaded."
-            )
-        self.model.load_state_dict(checkpoint["state_dict"])
-        self.model.load_other_parameter(checkpoint.get("other_parameter"))
-
-        # load optimizer state from checkpoint only when optimizer type is not changed
-        self.optimizer.load_state_dict(checkpoint["optimizer"])
-        message_output = f"Checkpoint loaded. Resume training from epoch {self.start_epoch}"
-        self.logger.info(message_output)
+        weights = load_file(os.path.join(hf_resume_file, "model.safetensors"))
+        self.model.load_state_dict(weights, strict=False)
+        self.processing_class.tokenizer = AutoTokenizer.from_pretrained(hf_resume_file)
 
     def _check_nan(self, loss):
         if torch.isnan(loss):
@@ -2082,10 +2111,31 @@ class HFPathLanguageModelingTrainer(ExplainableTrainer):
         if not hasattr(self, "hf_trainer"):
             raise ValueError("The HuggingFace Trainer has not been initialized. Please call `init_hf_trainer` first.")
 
-        if os.path.basename(resume_file).startswith(self.HUGGINGFACE_SAVE_PATH_SUFFIX):
+        # Check both the directory name and its parent for the prefix
+        resume_path = Path(resume_file)
+        dir_name = resume_path.name
+        parent_name = resume_path.parent.name
+        
+        # Check if this is a checkpoint subdirectory (e.g., checkpoint-74790)
+        if dir_name.startswith('checkpoint-') and (
+            parent_name.startswith(self.HUGGINGFACE_SAVE_PATH_SUFFIX) or 
+            parent_name.startswith(self.HOPWISE_SAVE_PATH_SUFFIX)
+        ):
+            # Use the parent directory for prefix matching
+            if parent_name.startswith(self.HUGGINGFACE_SAVE_PATH_SUFFIX):
+                hf_resume_file = str(resume_path)
+                hopwise_resume_file = str(resume_path.parent).replace(
+                    self.HUGGINGFACE_SAVE_PATH_SUFFIX, self.HOPWISE_SAVE_PATH_SUFFIX
+                ) + ".pth"
+            else:
+                hopwise_resume_file = str(resume_path.parent) + ".pth"
+                hf_resume_file = str(resume_path.parent).replace(
+                    self.HOPWISE_SAVE_PATH_SUFFIX, self.HUGGINGFACE_SAVE_PATH_SUFFIX
+                )
+        elif dir_name.startswith(self.HUGGINGFACE_SAVE_PATH_SUFFIX):
             hf_resume_file = resume_file
             hopwise_resume_file = resume_file.replace(self.HUGGINGFACE_SAVE_PATH_SUFFIX, self.HOPWISE_SAVE_PATH_SUFFIX)
-        elif os.path.basename(resume_file).startswith(self.HOPWISE_SAVE_PATH_SUFFIX):
+        elif dir_name.startswith(self.HOPWISE_SAVE_PATH_SUFFIX):
             hopwise_resume_file = resume_file
             hf_resume_file = resume_file.replace(self.HOPWISE_SAVE_PATH_SUFFIX, self.HUGGINGFACE_SAVE_PATH_SUFFIX)
         else:

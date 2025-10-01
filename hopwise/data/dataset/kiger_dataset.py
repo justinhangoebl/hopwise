@@ -10,11 +10,11 @@ for item representation in knowledge graph paths.
 
 import re
 from typing import List, Dict, Optional
-from hopwise.data.dataset.kg_path_dataset import ChunkedKnowledgePathDataset
+from hopwise.data.dataset.kg_path_dataset import KnowledgePathDataset
 from hopwise.utils import PathLanguageModelingTokenType, set_color
 
 
-class KIGERDataset(ChunkedKnowledgePathDataset):
+class KIGERDataset(KnowledgePathDataset):
     """Extended KG Path Dataset with RQ-VAE semantic item representations."""
     
     def __init__(self, config, dataset=None):
@@ -96,8 +96,8 @@ class KIGERDataset(ChunkedKnowledgePathDataset):
         
         # Generate actual semantic tokens from the mapping
         semantic_tokens = set()
-        for item_id, semantic_codes in self.semantic_mapping.items():
-            semantic_token = self.semantic_token_prefix + ''.join(f"{code:03d}" for code in semantic_codes)
+        for code in range(257):
+            semantic_token = f"{self.semantic_token_prefix}{code:03d}"  # SEM000, SEM001, ..., SEM255
             semantic_tokens.add(semantic_token)
     
         # Add semantic tokens to tokenizer
