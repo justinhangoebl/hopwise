@@ -40,6 +40,8 @@ def create_dataset(config):
     """
     dataset_module = importlib.import_module("hopwise.data.dataset")
     if hasattr(dataset_module, config["model"] + "Dataset"):
+        logger = getLogger()
+        logger.info("DATASET CHOICE 1")
         dataset_class = getattr(dataset_module, config["model"] + "Dataset")
     else:
         model_type = config["MODEL_TYPE"]

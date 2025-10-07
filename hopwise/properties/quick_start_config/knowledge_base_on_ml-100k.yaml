@@ -7,7 +7,7 @@ dataset: ml-100k
 # Training settings optimized for ml-100k
 epochs: 22
 train_batch_size: 256
-eval_batch_size: 128
+eval_batch_size: 64
 learning_rate: 0.001
 weight_decay: 0.0
 

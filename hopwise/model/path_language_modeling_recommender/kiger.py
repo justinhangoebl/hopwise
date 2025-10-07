@@ -32,16 +32,16 @@ class KIGER(KGGLM):
         from logging import getLogger
         self.logger = getLogger()
         
-        # Initialize RQ-VAE integration BEFORE parent initialization
+        # Initialize basic attributes BEFORE parent initialization
         self.use_semantic_ids = True  # Always enabled for KIGER
         self.semantic_mapping = None
         self.rqvae_model = None
         
-        # Load RQ-VAE components
-        self._init_rqvae_integration(config)
-        
-        # Initialize parent KGGLM
+        # Initialize parent KGGLM FIRST
         super().__init__(config, dataset)
+        
+        # Load RQ-VAE components AFTER parent initialization
+        self._init_rqvae_integration(config)
         
         self.logger.info(set_color("KIGER initialized with RQ-VAE semantic IDs", "green"))
         if self.semantic_mapping:
@@ -95,6 +95,7 @@ class KIGER(KGGLM):
 
             # Default config if not inside checkpoint
             if model_config is None:
+                self.logger.warning("No model_config found in checkpoint, using config from YAML")
                 model_config = {
                     "input_dim": 768,
                     "latent_dim": 256,
@@ -103,6 +104,17 @@ class KIGER(KGGLM):
                     "n_quantization_layers": self.n_quantization_layers,
                     "commitment_weight": 0.25,
                 }
+                
+                # Try to infer codebook_size from state_dict if mismatch occurs
+                if "quantization_layers.0.embedding.weight" in state_dict:
+                    saved_codebook_size = state_dict["quantization_layers.0.embedding.weight"].shape[0]
+                    if saved_codebook_size != self.codebook_size:
+                        self.logger.warning(f"Codebook size mismatch detected!")
+                        self.logger.warning(f"Config codebook_size: {self.codebook_size}")
+                        self.logger.warning(f"Saved model codebook_size: {saved_codebook_size}")
+                        self.logger.warning(f"Using saved model codebook_size: {saved_codebook_size}")
+                        model_config["codebook_size"] = saved_codebook_size
+                        self.codebook_size = saved_codebook_size  # Update for consistency
 
             # Build fresh model and load weights
             from hopwise.external.rqvae.modules.rq_vae import RQ_VAE
@@ -191,8 +203,8 @@ class KIGER(KGGLM):
             self.logger.info(outputs.keys())
         except:
             pass
-        # semantic_tokens = [token for token in outputs['generated_tokens'] if token.startswith(self.semantic_token_prefix)]
-        #self.logger.info(f"Semantic tokens used: {semantic_tokens}")
+        semantic_tokens = [token for token in outputs['generated_tokens'] if token.startswith(self.semantic_token_prefix)]
+        self.logger.info(f"Semantic tokens used: {semantic_tokens}")
         
         return outputs
 
