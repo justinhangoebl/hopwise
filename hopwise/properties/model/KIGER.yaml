@@ -64,6 +64,3 @@ rqvae_config:
   commitment_weight: 0.25
   n_quantization_layers: 3
   codebook_size: 128 # Changed from 256 to 128
-  # Use ML-100k mapping instead of ML-1M
-  model_path: "hopwise/external/rqvae/saved_models/rqvae_ml100k_items.pt"
-  semantic_mapping_path: "hopwise/external/rqvae/mappings/ml100k_item_semids.pt"
