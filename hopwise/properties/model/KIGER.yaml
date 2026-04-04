@@ -1,0 +1,66 @@
+# KIGER (Knowledge-aware Item Generation Enhanced Recommender) Configuration
+# Extends KGGLM with RQ-VAE semantic item representations
+
+# Base KGGLM settings
+use_chunked_loading: true
+path_chunk_size: 8000
+learning_rate: 2e-4
+weight_decay: 0.01
+warmup_steps: 250
+embedding_size: 768
+num_heads: 12
+num_layers: 6
+use_kg_token_types: True
+
+save_step: 1
+pretrain_epochs: 2
+train_stage: "pretrain"
+pre_model_path: ""
+
+proc_title: "KIGER"
+
+base_model: distilgpt2
+sequence_postprocessor: Cumulative
+
+# Path sampling configuration (optimized for semantic integration)
+path_hop_length: 3
+MAX_PATHS_PER_USER: 250
+
+path_sample_args:
+  restrict_by_phase: False
+  pretrain_hop_length: (2,2)
+  pretrain_paths: 1
+  temporal_causality: False
+  strategy: weighted-rw  # Much faster than simple-ui
+  MAX_RW_TRIES_PER_IID: 50  # Increased for better path coverage
+  parallel_max_workers: -1  # Use all available CPU cores
+
+# KIGER-specific RQ-VAE integration settings
+kiger:
+  use_semantic_ids: true
+  semantic_token_prefix: "SEM"
+  n_quantization_layers: 3
+  codebook_size: 128 # Changed from 256 to 128
+
+  # Paths to RQ-VAE model and semantic mappings
+  rqvae_model_path: "hopwise/external/rqvae/saved_models/rqvae_ml1m_item.pt"
+  semantic_mapping_path: "hopwise/external/rqvae/mappings/ml1m_item_semids.pt"
+
+  # RQ-VAE model configuration (used if loading from checkpoint)
+  rqvae_config:
+    input_dim: 768
+    latent_dim: 256
+    hidden_dims: [768, 512, 256]
+    commitment_weight: 0.25
+    n_quantization_layers: 3
+    codebook_size: 128 # Changed from 256 to 128
+
+rqvae_config:
+  use_semantic_ids: true
+  semantic_token_prefix: "SEM"
+  input_dim: 768
+  latent_dim: 256
+  hidden_dims: [768, 512, 256]
+  commitment_weight: 0.25
+  n_quantization_layers: 3
+  codebook_size: 128 # Changed from 256 to 128

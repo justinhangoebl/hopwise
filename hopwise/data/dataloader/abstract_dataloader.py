@@ -179,6 +179,8 @@ class NegSampleDataLoader(AbstractDataLoader):
             indices = torch.max(scores, dim=0)[1].detach().cpu()
             neg_candidate_ids = neg_candidate_ids.reshape(candidate_num, -1)
             neg_item_ids = neg_candidate_ids[indices, [i for i in range(neg_candidate_ids.shape[1])]].view(-1)
+
+            torch.cuda.empty_cache()
             self.model.train()
             return self.sampling_func(inter_feat, neg_item_ids)
         elif self.neg_sample_args["distribution"] != "none" and self.neg_sample_args["sample_num"] != "none":

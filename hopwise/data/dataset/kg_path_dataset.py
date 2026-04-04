@@ -12,7 +12,7 @@ from itertools import chain, zip_longest
 import numba
 import numpy as np
 
-from hopwise.data import Interaction
+from hopwise.data.interaction import Interaction
 from hopwise.data.dataset import KnowledgeBasedDataset
 from hopwise.data.utils import user_parallel_sampling
 from hopwise.utils import PathLanguageModelingTokenType, progress_bar, set_color
@@ -146,6 +146,7 @@ class KnowledgePathDataset(KnowledgeBasedDataset):
                 np.char.add(PathLanguageModelingTokenType.ITEM.token, np.arange(self.item_num).astype(str)),
                 np.char.add(PathLanguageModelingTokenType.ENTITY.token, entity_range.astype(str)),
                 np.char.add(PathLanguageModelingTokenType.RELATION.token, np.arange(self.relation_num).astype(str)),
+                np.char.add(PathLanguageModelingTokenType.SEMANTIC.token, np.arange(1000).astype(str)),
             ]
         )
 
@@ -362,6 +363,7 @@ class KnowledgePathDataset(KnowledgeBasedDataset):
         if self._path_dataset is None:
             # Try to load from cache first
             cache_file = self._get_cache_key()
+            self.logger.info(cache_file)
             cached_paths = self._load_paths_from_cache(cache_file)
 
             if cached_paths is not None:
@@ -506,6 +508,9 @@ class KnowledgePathDataset(KnowledgeBasedDataset):
         user_paths = _generate_user_paths_constrained_random_walk_per_user(
             graph, used_ids, self.iid_field, self.entity_field, **kwargs
         )
+        # user_paths = _generate_user_paths_random_walk_per_user(
+        #     graph, used_ids, self.iid_field, self.entity_field, **kwargs
+        # )
         paths = set.union(*user_paths)
 
         return paths
@@ -804,64 +809,27 @@ def _generate_user_paths_constrained_random_walk_per_user(graph, used_ids, iid_f
     restrict_by_phase = kwargs.pop("restrict_by_phase", None)
     collaborative_path = kwargs.pop("collaborative_path", None)
 
+    # Cache node types and neighbors to avoid repeated igraph lookups
+    node_types = np.array(graph.vs["type"])
+    neighbors_cache = [np.array(graph.neighbors(v), dtype=np.int32) for v in range(graph.vcount())]
+
     def process_user(u):
         user_paths = set()
 
-        pos_iid = np.array(list(used_ids[u]))
+        # Preprocess positive items for this user
+        pos_iid = np.fromiter(used_ids[u], dtype=np.int32)
         if temporal_matrix is not None:
             pos_iid = pos_iid[np.argsort(temporal_matrix[u, pos_iid])]
-
-        # reindex item ids according to the igraph
-        pos_iid += user_num
+        pos_iid += user_num  # reindex items
 
         user_path_sample_size = 0
         user_invalid_paths = max_consecutive_invalid
-
-        def _graph_traversal(g, path, hop, candidates=None):
-            nonlocal user_paths
-            nonlocal user_path_sample_size
-            nonlocal user_invalid_paths
-
-            if hop == 1 and candidates is not None:
-                next_node_candidates = g.es.select(_source=path[-1], _target=candidates)
-                next_node_candidates = list(
-                    set(e.source if e.source_vertex != path[-1] else e.target for e in next_node_candidates)
-                )
-            else:
-
-                def _check_next_candidate(node):
-                    if hop == 1:
-                        type_check = g.vs[node]["type"] == iid_field
-                    elif collaborative_path:
-                        type_check = g.vs[node]["type"] != iid_field
-                    else:
-                        type_check = g.vs[node]["type"] == entity_field
-
-                    return type_check and node != path[-1]
-
-                next_node_candidates = [v for v in g.neighbors(path[-1]) if _check_next_candidate(v)]
-
-            next_nodes = np.random.choice(
-                next_node_candidates, min(len(next_node_candidates), paths_per_hop), replace=False
-            )
-            for node in next_nodes:
-                new_path = (*path, node)
-                if hop == 1:
-                    # Path is valid per construction
-                    user_paths.add(new_path)
-                    user_path_sample_size += 1
-                else:
-                    _graph_traversal(g, new_path, hop - 1, candidates)
-
-                if user_path_sample_size == max_paths_per_user:
-                    return
 
         while True:
             pos_iid_range = _check_temporal_causality_feasibility(temporal_matrix, pos_iid)
             if pos_iid_range is None:
                 return set()
 
-            # select new starting node
             start_node_idx = np.random.randint(pos_iid_range)
             start_node = pos_iid[start_node_idx]
 
@@ -869,20 +837,131 @@ def _generate_user_paths_constrained_random_walk_per_user(graph, used_ids, iid_f
                 if temporal_matrix is not None:
                     item_candidates = pos_iid[start_node_idx + 1 :]
                 else:
-                    item_candidates = np.concatenate([pos_iid[:start_node_idx], pos_iid[start_node_idx + 1 :]])
+                    item_candidates = np.concatenate(
+                        [pos_iid[:start_node_idx], pos_iid[start_node_idx + 1 :]]
+                    )
             else:
                 item_candidates = None
 
-            # First hop is the relation user-item already addressed
-            curr_path_sample_size = user_path_sample_size
-            _graph_traversal(graph, (u, start_node), path_hop_length, item_candidates)
-            if user_path_sample_size - curr_path_sample_size == 0:
+            curr_sample_size = user_path_sample_size
+            # Iterative DFS instead of recursion
+            stack = [((u, start_node), path_hop_length, item_candidates)]  # path always a tuple
+            while stack:
+                path, hop, candidates = stack.pop()
+                node = path[-1]
+
+                if hop == 1 and candidates is not None:
+                    cand_nodes = candidates
+                else:
+                    neigh = neighbors_cache[node]
+                    if hop == 1:
+                        mask = (node_types[neigh] == iid_field)
+                    elif collaborative_path:
+                        mask = (node_types[neigh] != iid_field)
+                    else:
+                        mask = (node_types[neigh] == entity_field)
+                    mask &= (neigh != node)
+                    cand_nodes = neigh[mask]
+
+                if cand_nodes.size == 0:
+                    continue
+
+                chosen = np.random.choice(
+                    cand_nodes, min(cand_nodes.size, paths_per_hop), replace=False
+                )
+                for nxt in chosen:
+                    new_path = (*path, nxt)
+                    if hop == 1:
+                        user_paths.add(new_path)
+                        user_path_sample_size += 1
+                    else:
+                        stack.append((new_path, hop - 1, candidates))
+
+                    if user_path_sample_size >= max_paths_per_user:
+                        break
+                if user_path_sample_size >= max_paths_per_user:
+                    break
+
+
+            if user_path_sample_size - curr_sample_size == 0:
                 user_invalid_paths -= paths_per_hop
             else:
                 user_invalid_paths = max_consecutive_invalid
 
-            if user_path_sample_size == max_paths_per_user or user_invalid_paths <= 0:
+            if user_path_sample_size >= max_paths_per_user or user_invalid_paths <= 0:
                 break
+
+        return user_paths
+
+    return process_user
+
+@user_parallel_sampling
+def _generate_user_paths_random_walk_per_user(graph, used_ids, iid_field, entity_field, **kwargs):
+    """Random-walk style constrained path generation (linear in hop length)."""
+    temporal_matrix = kwargs.pop("temporal_matrix", None)
+    path_hop_length = kwargs.pop("path_hop_length", None)
+    user_num = kwargs.pop("user_num", None)
+    max_paths_per_user = kwargs.pop("max_paths_per_user", None)
+    restrict_by_phase = kwargs.pop("restrict_by_phase", None)
+    collaborative_path = kwargs.pop("collaborative_path", None)
+    max_consecutive_invalid = kwargs.pop("max_consecutive_invalid", None)
+
+    node_types = np.array(graph.vs["type"])
+    neighbors_cache = [np.array(graph.neighbors(v), dtype=np.int32) for v in range(graph.vcount())]
+
+    def process_user(u):
+        user_paths = set()
+        user_invalid_paths = max_consecutive_invalid
+
+        # Positive items for this user
+        pos_iid = np.fromiter(used_ids[u], dtype=np.int32)
+        if temporal_matrix is not None:
+            pos_iid = pos_iid[np.argsort(temporal_matrix[u, pos_iid])]
+        pos_iid += user_num  # reindex items
+
+        while len(user_paths) < max_paths_per_user and user_invalid_paths > 0:
+            pos_iid_range = _check_temporal_causality_feasibility(temporal_matrix, pos_iid)
+            if pos_iid_range is None:
+                break
+
+            start_node_idx = np.random.randint(pos_iid_range)
+            start_node = pos_iid[start_node_idx]
+
+            if restrict_by_phase and temporal_matrix is not None:
+                item_candidates = pos_iid[start_node_idx + 1 :]
+            else:
+                item_candidates = None
+
+            path = [u, start_node]
+            node = start_node
+            success = True
+
+            for hop in range(1, path_hop_length + 1):
+                neigh = neighbors_cache[node]
+                if hop == path_hop_length and item_candidates is not None:
+                    cand_nodes = item_candidates
+                else:
+                    if hop == path_hop_length:
+                        mask = (node_types[neigh] == iid_field)
+                    elif collaborative_path:
+                        mask = (node_types[neigh] != iid_field)
+                    else:
+                        mask = (node_types[neigh] == entity_field)
+                    mask &= (neigh != node)
+                    cand_nodes = neigh[mask]
+
+                if cand_nodes.size == 0:
+                    success = False
+                    break
+
+                node = np.random.choice(cand_nodes)
+                path.append(node)
+
+            if success:
+                user_paths.add(tuple(path))
+                user_invalid_paths = max_consecutive_invalid
+            else:
+                user_invalid_paths -= 1
 
         return user_paths
 
@@ -1116,3 +1195,84 @@ def _add_paths_relations_parallel(paths, paths_with_relations, relation_map):
             paths_with_relations[path_idx, start_path] = path[node_idx]
             paths_with_relations[path_idx, start_path + 1] = edge_id
             paths_with_relations[path_idx, start_path + 2] = path[node_idx + 1]
+
+class ChunkedKnowledgePathDataset(KnowledgePathDataset):
+    def __init__(self, config):
+        super().__init__(config)
+        self.chunk_size = config["path_chunk_size"]
+        self.use_chunked_loading = config["use_chunked_loading"]
+        self._chunk_metadata = None
+        
+    def generate_user_path_dataset(self):
+        """Override to support chunked generation and loading."""
+        if not isinstance(self.inter_feat, Interaction):
+            raise ValueError("The data should be prepared before generating the path dataset.")
+
+        if self._path_dataset is None:
+            cache_file = self._get_cache_key()
+            
+            if self.use_chunked_loading:
+                # Try to load chunked metadata
+                if self._load_chunked_metadata(cache_file):
+                    self.logger.info("Using chunked cached path sampling results")
+                    # Create a lazy-loading path dataset
+                    self._path_dataset = ChunkedPathString(self, cache_file)
+                else:
+                    self.logger.info("Generating and caching paths in chunks...")
+                    self._generate_chunked_paths(cache_file)
+                    self._path_dataset = ChunkedPathString(self, cache_file)
+            else:
+                # Original behavior
+                cached_paths = self._load_paths_from_cache(cache_file)
+                if cached_paths is not None:
+                    generated_paths = cached_paths
+                else:
+                    generated_paths = self.generate_user_paths()
+                    self._save_paths_to_cache(generated_paths, cache_file)
+                
+                path_string = ""
+                for path in generated_paths:
+                    path_string += self._format_path(path) + "\n"
+                self._path_dataset = path_string
+    def _load_chunked_metadata(self, cache_file):
+        """Load chunked metadata from cache."""
+        metadata_file = f"{cache_file}_metadata.pkl"
+        metadata = self._load_paths_from_cache(metadata_file)
+        if metadata is not None:
+            self._chunk_metadata = metadata
+            return True
+        return False
+
+    def _generate_chunked_paths(self, cache_file):
+        """Generate paths and save in chunks."""
+        generated_paths = self.generate_user_paths()
+        
+        # Split into chunks
+        chunks = []
+        for i in range(0, len(generated_paths), self.chunk_size):
+            chunk = generated_paths[i:i + self.chunk_size]
+            chunk_file = f"{cache_file}_chunk_{i//self.chunk_size}.pkl"
+            self._save_paths_to_cache(chunk, chunk_file)
+            chunks.append({
+                'file': chunk_file,
+                'size': len(chunk),
+                'start_idx': i,
+                'end_idx': i + len(chunk)
+            })
+        
+        # Save metadata
+        metadata = {
+            'total_chunks': len(chunks),
+            'chunk_size': self.chunk_size,
+            'total_paths': len(generated_paths),
+            'chunks': chunks
+        }
+        self._save_paths_to_cache(metadata, f"{cache_file}_metadata.pkl")
+        self._chunk_metadata = metadata
+
+class ChunkedPathString:
+    """Lazy-loading string-like object for chunked paths."""
+    def __init__(self, dataset, cache_file):
+        self.dataset = dataset
+        self.cache_file = cache_file
+        self._cached_chunks = {}

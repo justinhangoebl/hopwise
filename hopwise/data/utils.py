@@ -40,6 +40,8 @@ def create_dataset(config):
     """
     dataset_module = importlib.import_module("hopwise.data.dataset")
     if hasattr(dataset_module, config["model"] + "Dataset"):
+        logger = getLogger()
+        logger.info("DATASET CHOICE 1")
         dataset_class = getattr(dataset_module, config["model"] + "Dataset")
     else:
         model_type = config["MODEL_TYPE"]
@@ -52,6 +54,13 @@ def create_dataset(config):
             ModelType.DECISIONTREE: "Dataset",
             ModelType.PATH_LANGUAGE_MODELING: "KnowledgePathDataset",
         }
+        dataset_class_name = type2class[model_type]
+        # Use ChunkedKnowledgePathDataset if requested
+        if (
+            dataset_class_name == "KnowledgePathDataset"
+            and config["use_chunked_loading"]
+        ):
+            dataset_class = getattr(dataset_module, "ChunkedKnowledgePathDataset")
         dataset_class = getattr(dataset_module, type2class[model_type])
 
     default_file = os.path.join(config["checkpoint_dir"], f"{config['dataset']}-{dataset_class.__name__}.pth")
